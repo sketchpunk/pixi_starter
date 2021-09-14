@@ -1,0 +1,180 @@
+<!DOCTYPE html><html><head><title></title></head><body><script type="module">
+
+import Starter, { PIXI } from "./lib/Starter.js";
+// https://github.com/pixijs/pixijs/discussions/7728
+// https://medium.com/swlh/inside-pixijs-batch-rendering-system-fad1b466c420
+// https://www.html5gamedevs.com/topic/47664-procedural-texture-shader-batching/
+// https://www.pixiplayground.com/#/edit/1lREoA-hv8TqteYDil5jE  created Batch
+
+let App;
+window.addEventListener( "load", _=>{
+    // Must Execute before Creating Application
+    PIXI.Renderer.registerPlugin( 'BatchPlugin', BatchPlugin );
+
+    App = new Starter( { resize:true, grid:true } );
+    //App.colorSprite( 0x00ff00, 20, 20, [ 50, 50 ] );
+    
+    let g = new PIXI.Graphics();
+    g.pluginName = 'BatchPlugin';
+    g.lineStyle( 6, 0xffd900, 1 );
+    g.beginFill( 0x00ff00, 0.9 );
+    g.drawCircle( 100, 100, 20 );
+    g.endFill();
+    
+    App.add( g );
+});
+
+class BatchPlugin extends PIXI.AbstractBatchRenderer{
+    constructor( renderer ){
+        super( renderer );
+        
+        this.shaderGenerator    = new CustomBatchShaderGenerator( VERT_SRC2, FRAG_SRC2 );
+        //this.shaderGenerator    = new BatchShaderGenerator( VERT_SRC, FRAG_SRC );
+        this.geometryClass      = PIXI.BatchGeometry;
+        this.vertexSize         = 6;
+    };
+}
+
+class CustomBatchShaderGenerator{
+    constructor( vertexSrc, fragTemplate ){
+        this.vertexSrc          = vertexSrc;
+        this.fragTemplate       = fragTemplate;
+        this.programCache       = null;
+        this.defaultGroupCache  = {};
+    }
+
+    generateShader( maxTextures ){
+        if( !this.programCache ) this.programCache = new PIXI.Program( this.vertexSrc, this.fragTemplate );
+
+        const uniforms = {
+            translationMatrix   : new PIXI.Matrix(),
+            resolution          : [ window.innerWidth, window.innerHeight ],
+        };
+
+        return new PIXI.Shader( this.programCache, uniforms );
+    }
+}
+
+class BatchShaderGenerator{
+    constructor( vertexSrc, fragTemplate ){
+        this.vertexSrc          = vertexSrc;
+        this.fragTemplate       = fragTemplate;
+        this.programCache       = {};
+        this.defaultGroupCache  = {};
+
+        if( fragTemplate.indexOf('%count%') < 0 )   throw new Error('Fragment template must contain "%count%".');
+        if( fragTemplate.indexOf('%forloop%') < 0 ) throw new Error('Fragment template must contain "%forloop%".');
+    }
+
+    generateShader( maxTextures ){
+        
+        if( !this.programCache[ maxTextures ] ){
+
+            const sampleValues = new Int32Array(maxTextures);
+            for( let i = 0; i < maxTextures; i++ ) sampleValues[i] = i;
+
+            this.defaultGroupCache[ maxTextures ] = PIXI.UniformGroup.from( { uSamplers: sampleValues }, true );
+
+            let fragmentSrc = this.fragTemplate;
+            fragmentSrc = fragmentSrc.replace(/%count%/gi, `${maxTextures}`);
+            fragmentSrc = fragmentSrc.replace(/%forloop%/gi, this.generateSampleSrc(maxTextures));
+
+            this.programCache[ maxTextures ] = new PIXI.Program( this.vertexSrc, fragmentSrc );
+        }
+
+        const uniforms = {
+            tint                : new Float32Array( [1, 1, 1, 1] ),
+            translationMatrix   : new PIXI.Matrix(),
+            default             : this.defaultGroupCache[ maxTextures ],
+        };
+
+        return new PIXI.Shader( this.programCache[ maxTextures ], uniforms );
+    }
+
+    generateSampleSrc( maxTextures ){
+        let src = '';
+        src += '\n';
+        src += '\n';
+        for (let i = 0; i < maxTextures; i++){
+            if( i > 0 )                 src += '\nelse ';
+            if( i < maxTextures - 1 )   src += `if(vTextureId < ${i}.5)`;
+
+            src += '\n{';
+            src += `\n\tcolor = texture2D(uSamplers[${i}], vTextureCoord);`;
+            src += '\n}';
+        }
+        src += '\n';
+        src += '\n';
+        return src;
+    }
+}
+
+const VERT_SRC = `
+precision highp float;
+attribute vec2 aVertexPosition;
+attribute vec2 aTextureCoord;
+attribute vec4 aColor;
+attribute float aTextureId;
+
+uniform mat3 projectionMatrix;
+uniform mat3 translationMatrix;
+uniform vec4 tint;
+
+varying vec2 vTextureCoord;
+varying vec4 vColor;
+varying float vTextureId;
+
+void main(void){
+    gl_Position = vec4((projectionMatrix * translationMatrix * vec3(aVertexPosition, 1.0)).xy, 0.0, 1.0);
+
+    vTextureCoord = aTextureCoord;
+    vTextureId = aTextureId;
+    vColor = aColor * tint;
+}
+`;
+
+const FRAG_SRC = `
+varying vec2 vTextureCoord;
+varying vec4 vColor;
+varying float vTextureId;
+uniform sampler2D uSamplers[%count%];
+
+void main(void){
+    vec4 color;
+    %forloop%
+    gl_FragColor = color * vColor;
+}
+`;
+
+const VERT_SRC2 = `
+precision highp float;
+attribute vec2 aVertexPosition;
+attribute vec4 aColor;
+
+uniform mat3 projectionMatrix;
+uniform mat3 translationMatrix;
+
+varying vec4 vColor;
+
+void main(void){
+    gl_Position = vec4( ( projectionMatrix * translationMatrix * vec3(aVertexPosition, 1.0) ).xy, 0.0, 1.0);
+    vColor      = aColor;
+}
+`;
+
+const FRAG_SRC2 = `
+varying vec4 vColor;
+uniform vec2 resolution;
+
+void main(void){
+    if( vColor.a > 0.999 ) gl_FragColor = vColor;
+    else{
+        vec2 uv         = gl_FragCoord.xy / resolution;
+        float interval  = 10.0;
+        float a         = step( mod( gl_FragCoord.x + gl_FragCoord.y, interval ) / ( interval - 1.0 ), 0.5 );
+        gl_FragColor    = vec4( vec3(a) * vColor.rgb, a );
+    }
+}
+`;
+
+</script></body></html>

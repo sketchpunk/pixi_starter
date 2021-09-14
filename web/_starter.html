@@ -1,0 +1,11 @@
+<!DOCTYPE html><html><head><title></title></head><body><script type="module">
+
+import Starter, { PIXI } from "./lib/Starter.js";
+
+let App;
+window.addEventListener( "load", _=>{
+    App = new Starter( { resize:true, grid:true } );
+    App.colorSprite( 0x00ff00, 20, 20, [ 50, 50 ] );
+});
+
+</script></body></html>

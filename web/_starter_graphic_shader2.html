@@ -1,0 +1,104 @@
+<!DOCTYPE html><html><head><title></title></head><body><script type="module">
+
+import Starter, { PIXI } from "./lib/Starter.js";
+
+// https://github.com/pixijs/pixijs/discussions/7728
+// https://medium.com/swlh/inside-pixijs-batch-rendering-system-fad1b466c420
+// https://www.pixiplayground.com/#/edit/tYcT_u_Lc4mPPQbfUPASN  Save it here.
+
+let App;
+window.addEventListener( "load", _=>{
+    // Must Execute before Creating Application
+    //const InvertPlugin = PIXI.BatchPluginFactory.create({ fragment:FRAG_SRC, vertex:VERT_SRC });
+    //PIXI.Renderer.registerPlugin( 'invert', InvertPlugin );
+
+
+    App = new Starter( { resize:true, grid:true } );
+    //App.colorSprite( 0x00ff00, 20, 20, [ 50, 50 ] );
+    
+    const sh    = PIXI.Shader.from( VERT_SRC, FRAG_SRC, { tint:[0,0,0,0], resolution:[ window.innerWidth, window.innerHeight ] } );
+
+    let g = new PIXI.Graphics();
+    //g.pluginName = 'invert';
+    g.shader = sh;
+    g.lineStyle( 6, 0xffd900, 1.0 );
+    g.beginFill( 0x00ffff, 0.9 );
+    g.drawCircle( 100, 100, 20 );
+    g.endFill();
+    
+    App.add( g );
+
+    //console.log( g._resolveDirectShader() );
+});
+
+
+const VERT_SRC = `
+precision highp float;
+attribute vec2  aVertexPosition;
+attribute vec2  aTextureCoord;
+attribute vec4  aColor;
+attribute float aTextureId;
+
+uniform mat3    projectionMatrix;
+uniform mat3    translationMatrix;
+uniform vec4    tint;           // Required, Graphic Will Fail Rendering if this is missing.
+
+varying vec2    vTextureCoord;
+varying vec4    vColor;
+varying float   vTextureId;
+
+void main(void){
+    gl_Position     = vec4(( projectionMatrix * translationMatrix * vec3(aVertexPosition, 1.0) ).xy, 0.0, 1.0);
+    vTextureCoord   = aTextureCoord;
+    vTextureId      = aTextureId;
+    vColor          = aColor * tint;
+}
+`;
+
+// https://www.shadertoy.com/view/MsBfzm
+const FRAG_SRC = `
+varying vec2  vTextureCoord;
+varying vec4  vColor;
+varying float vTextureId;
+uniform vec2  resolution;
+
+bool isNotBlack( vec4 v ){ return bool( step( 0.00001, v.r + v.g + v.b ) ); }
+
+vec2 rotateCoord( vec2 uv, float rads ){
+    uv *= mat2( cos(rads), sin(rads), -sin(rads), cos(rads) );
+	return uv;
+}
+
+vec2 grid( vec2 fragCoord, float space, float gridWidth ){
+    vec2 p    = fragCoord - 0.5;
+    vec2 size = vec2( gridWidth - 0.5 );
+    
+    vec2 a1 = mod( p - size, space );
+    vec2 a2 = mod( p + size, space );
+    vec2 a  = a2 - a1;
+       
+    //float g = min( a.x, a.y );
+    //return clamp( g, 0.0, 1.0 );
+    return a;
+}
+
+void main(void){
+    if( vColor.a > 0.99 ) gl_FragColor = vColor;
+    else{
+        vec2  fragCoord = vec2( gl_FragCoord.x, resolution.y - gl_FragCoord.y ); // Flip Y Coordnate so origin is Upper Left 
+        
+        float rads      = radians( 45.0 );
+        float thinkness = 1.1;
+        float spacing   = 7.0;
+        int   useGrid   = 0;   // 0:No, 1:Yes
+
+        vec2  grad      =  grid( rotateCoord( fragCoord, rads ), spacing, thinkness );
+        float a         = ( useGrid == 1 )? clamp( min( grad.x, grad.y ), 0.0, 1.0 ) : grad.x;
+        a = 1.0 - a;
+
+        gl_FragColor    = vec4( a * vColor.rgb, a );
+    }
+}
+`;
+
+</script></body></html>

@@ -1,0 +1,75 @@
+<!DOCTYPE html><html><head><title></title></head><body><script type="module">
+
+import Starter, { PIXI } from "./lib/Starter.js";
+
+// https://github.com/pixijs/pixijs/discussions/7728
+// https://medium.com/swlh/inside-pixijs-batch-rendering-system-fad1b466c420
+
+let App;
+window.addEventListener( "load", _=>{
+    // Must Execute before Creating Application
+    //const InvertPlugin = PIXI.BatchPluginFactory.create({ fragment:FRAG_SRC, vertex:VERT_SRC });
+    //PIXI.Renderer.registerPlugin( 'invert', InvertPlugin );
+
+
+    App = new Starter( { resize:true, grid:true } );
+    //App.colorSprite( 0x00ff00, 20, 20, [ 50, 50 ] );
+    
+    const sh    = PIXI.Shader.from( VERT_SRC, FRAG_SRC, { tint:[0,0,0,0], resolution:[ window.innerWidth, window.innerHeight ] } );
+
+    let g = new PIXI.Graphics();
+    //g.pluginName = 'invert';
+    g.shader = sh;
+    g.lineStyle( 6, 0xffd900, 1 );
+    g.beginFill( 0x000000 );
+    g.drawCircle( 100, 100, 20 );
+    g.endFill();
+    
+    App.add( g );
+
+    //console.log( g._resolveDirectShader() );
+});
+
+const VERT_SRC = `
+precision highp float;
+attribute vec2  aVertexPosition;
+attribute vec2  aTextureCoord;
+attribute vec4  aColor;
+attribute float aTextureId;
+
+uniform mat3    projectionMatrix;
+uniform mat3    translationMatrix;
+uniform vec4    tint;           // Required, Graphic Will Fail Rendering if this is missing.
+
+varying vec2    vTextureCoord;
+varying vec4    vColor;
+varying float   vTextureId;
+
+void main(void){
+    gl_Position     = vec4(( projectionMatrix * translationMatrix * vec3(aVertexPosition, 1.0) ).xy, 0.0, 1.0);
+    vTextureCoord   = aTextureCoord;
+    vTextureId      = aTextureId;
+    vColor          = aColor * tint;
+}
+`;
+
+const FRAG_SRC = `
+varying vec2  vTextureCoord;
+varying vec4  vColor;
+varying float vTextureId;
+uniform vec2  resolution;
+
+bool isNotBlack( vec4 v ){ return bool( step( 0.00001, v.r + v.g + v.b ) ); }
+
+void main(void){
+    if( isNotBlack( vColor ) ) gl_FragColor = vColor;
+    else{
+        vec2 uv         = gl_FragCoord.xy / resolution;
+        float interval  = 10.0;
+        float a         = step( mod( gl_FragCoord.x + gl_FragCoord.y, interval ) / ( interval - 1.0 ), 0.5 );
+        gl_FragColor    = vec4( vec3(a), 1.0 );
+    }
+}
+`;
+
+</script></body></html>

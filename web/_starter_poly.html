@@ -1,0 +1,31 @@
+<!DOCTYPE html><html><head><title></title></head><body><script type="module">
+
+import Starter, { PIXI } from "./lib/Starter.js";
+
+let App;
+window.addEventListener( "load", _=>{
+    App = new Starter( { resize:true, grid:true } );
+
+    let graphic = new PIXI.Graphics();
+    graphic.clear();
+
+    // draw a shape
+    graphic.beginFill( 0xFF3300 );
+    graphic.lineStyle( 6, 0xffd900, 1 );
+    graphic.moveTo( 50, 150 );
+    graphic.lineTo( 250, 150 );
+    graphic.lineTo( 100, 200 );
+    graphic.lineTo( 50, 150 );
+    graphic.closePath();
+    graphic.endFill();
+
+    const path = [ 100,10, 100,30, 200,50, 250,20, 200,10 ];
+    graphic.lineStyle( 0 );
+    graphic.beginFill( 0x00ff00, 1 );
+    graphic.drawPolygon( path );
+    graphic.endFill();
+
+    App.add( graphic );
+});
+
+</script></body></html>

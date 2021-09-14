@@ -1,0 +1,126 @@
+<!DOCTYPE html><html><head><title></title></head><body><script type="module">
+
+import Starter, { PIXI }    from "./lib/Starter.js";
+import ObjectPool           from "./lib/ObjectPool.js";
+
+let App;
+let Pool;
+
+function on( name, evt, fn ){ document.getElementById( name ).addEventListener( evt, fn ); }
+
+window.addEventListener( "load", _=>{
+    App     = new Starter( { resize:true, grid:true } );
+    Pool    = new ObjectPool( newGraphic );
+
+
+    on( "btnNew", "click", btnNewClick );
+
+
+    let a = new Set( [ 'a', 'b', 'c', 'z' ] );    // New Set
+    let b = new Set( [ 'b', 'c', 'd', 'z' ] );    // Current Set
+    console.log( "New Set", a, "Old Set", b,  "COMPARE RESULTS", compareSets( a, b ) );
+});
+
+function compareSets( sNew, sOld ){
+    const rtn = { new:[], common:[], old:[] };
+    
+    let i;
+    for( i of sOld ) if( !sNew.has( i ) ) rtn.old.push( i );    // Item not in new Set
+    for( i of sNew ){
+        if( sOld.has( i ) ) rtn.common.push( i );               // Item in both sets
+        else                rtn.new.push( i );                  // Item only in new Set
+    }
+
+    return rtn;
+}
+
+function newGraphic(){
+    let graphic = new GraphicExt();
+    graphic.name        = ObjectPool.nanoId();
+    graphic.interactive = true;
+    graphic.buttonMode  = true;
+    
+    graphic.on( 'click',        onGraphicClick );
+    graphic.on( 'pointerover',  onGraphicOver );
+    graphic.on( 'pointerout',   onGraphicOut );
+
+    console.log( `%c NEW GRAPHIC ${graphic.name} `, 'color: #00ffff; background: #030307; padding:5px 0;' );
+    return graphic;
+}
+
+function onGraphicClick( e ){
+    console.log( "- Removing ", this.name );
+
+    App.remove( this );
+    Pool.recycle( this );
+}
+
+function onGraphicOver( e ){
+    //this.draw( 0x00ff00 );
+
+    let r  = this.userData.radius * 1.5;
+    let rh = r * 0.5;
+
+    this.clear();
+    this.beginFill( 0x00ff00, 1 );
+    this.drawRect ( this.userData.x-rh, this.userData.y-rh, r, r );
+    this.endFill();
+    
+}
+function onGraphicOut( e ){ this.draw( 0x00ffff ); }
+
+function btnNewClick(){
+    let maxX = 200; window.innerWidth * 0.8;
+    let maxY = 200; window.innerHeight * 0.8;
+
+    let x = 50 + maxX * Math.random();
+    let y = 50 + maxY * Math.random();
+    let r = 2 + 20 * Math.random();
+
+    let g = Pool.get();
+    console.log( "- Adding : ", g.name );
+
+    App.add( g.setData( x, y, r ) );
+}
+
+class GraphicExt extends PIXI.Graphics{
+    constructor(){
+        super();
+        this.userData = {
+            radius  : 0,
+            x       : 0,
+            y       : 0,
+        };
+    }
+
+    setData( x, y, radius ){
+        this.userData.radius = radius;
+        this.userData.x      = x;
+        this.userData.y      = y;
+        this.draw();
+        return this;
+    }
+
+    draw( c=0x00ffff ){
+        this.clear();
+        this.beginFill( c, 1 );
+        this.drawCircle( this.userData.x, this.userData.y, this.userData.radius );
+        this.endFill();
+        return this;
+    }
+}
+
+</script>
+<style>
+    a{ color:#909090; font-family:monospace; font-size:14px; text-decoration:none; }
+    a::before{ content:'[ '; font-weight:900; color:#d0d0d0; }
+    a::after{ content:' ]'; font-weight:900; color:#d0d0d0; }
+    a:hover{ color:#ffffff; }
+    div.layer{ position:fixed; top:10px; left:10px; }
+</style>
+
+<div class="layer">
+    <a href="javascript:void(0);" id="btnNew">New Item</a>
+</div>
+
+</body></html>
