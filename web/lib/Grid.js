@@ -1,4 +1,4 @@
-import PIXI from './pixi.min.js';
+import * as PIXI from '/node_modules/pixi.js/dist/browser/pixi.mjs';
 
 function Grid( w=window.innerWidth, h=window.innerHeight, minGrid=10, maxGrid=50 ){
     // Create a ScreenSpace Quad

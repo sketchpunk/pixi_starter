@@ -1,0 +1,28 @@
+{
+    "name"          : "pixi_starter",
+    "version"       : "0.0.0.1",
+    "description"   : "Starter Project for prototyping with pixi.js",
+    "keywords"      : [ "threejs", "3d" ],
+    "repository"    : { "url": "https://github.com/sketchpunk/pixi_starter.git", "type": "git" },
+    "author"        : { "name": "Sketchpunk" },
+    "license"       : "MIT",
+    "main"          : "",
+    "module"        : "",
+    "files"         : [],
+
+    "devDependencies": {
+        "concurrently"  : "^6.2.0",
+        "browser-sync": "^2.27.5"
+    },
+
+    "dependencies": {
+        "pixi.js": "^6.1.2"
+    },
+
+    "scripts": {
+        "test"      : "echo \"Error: no test specified\" && exit 1",
+        "bsyncInit" : "browser-sync init",
+        "bsyncRun"  : "browser-sync start --config bs-config.js",
+        "start"     : "concurrently \"npm:bsyncRun\" "
+    }
+}

@@ -1,6 +1,6 @@
-import PIXI from './pixi.min.js';
-//import * as PIXI    from 'pixi.js';
-import Grid from "./Grid.js";
+//import PIXI from './pixi.min.js';
+import * as PIXI    from '/node_modules/pixi.js/dist/browser/pixi.mjs';
+import Grid         from "./Grid.js";
 
 // #region STARTUP
 const mod_path = import.meta.url.substring( 0, import.meta.url.lastIndexOf("/") + 1 );
@@ -28,7 +28,7 @@ class Starter{
             height 			: window.innerHeight,
             resolution		: window.devicePixelRatio || 1,
             antialias       : true,
-            transparent     : true,
+            backgroundAlpha : true,
             //backgroundColor : 0x505050,
         };
 
