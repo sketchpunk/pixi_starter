@@ -6,10 +6,12 @@ class ObjectPoolItem {
     }
 }
 class ObjectPool {
-    constructor(fnNew = null) {
+    constructor(fnNew = null, startSize=0 ) {
         this.items = [];
         this.avail = [];
         this.onNew = fnNew;
+
+        for( let i=0; i < startSize; i++ ) this.avail.push( this._createNew() );
     }
     _createNew() {
         if (!this.onNew)
